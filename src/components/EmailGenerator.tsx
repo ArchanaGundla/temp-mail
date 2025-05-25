@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Copy, Mail, Clock, Trash2, Refresh } from 'lucide-react';
+import { Copy, Mail, Clock, Trash2, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface EmailGeneratorProps {
@@ -178,7 +178,7 @@ const EmailGenerator: React.FC<EmailGeneratorProps> = ({
                 variant="outline"
                 className="flex-1"
               >
-                <Refresh className="h-4 w-4 mr-2" />
+                <RefreshCw className="h-4 w-4 mr-2" />
                 New Email
               </Button>
               <Button 

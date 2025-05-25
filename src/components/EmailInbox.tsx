@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Inbox, Refresh, Mail, Clock, User, Eye } from 'lucide-react';
+import { Inbox, RefreshCw, Mail, Clock, User, Eye } from 'lucide-react';
 
 interface Email {
   id: string;
@@ -108,7 +107,7 @@ const EmailInbox: React.FC<EmailInboxProps> = ({ email, onEmailSelect }) => {
             disabled={isRefreshing}
             className="shrink-0"
           >
-            <Refresh className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </CardHeader>

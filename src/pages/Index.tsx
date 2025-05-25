@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Mail, Clock, Shield, Trash2, Refresh, Eye } from 'lucide-react';
+import { Copy, Mail, Clock, Shield, Trash2, RefreshCw, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import EmailGenerator from '@/components/EmailGenerator';
 import EmailInbox from '@/components/EmailInbox';
@@ -116,7 +116,7 @@ const Index = () => {
             <Card className="bg-white/60 backdrop-blur-sm border-blue-100">
               <CardContent className="p-6 text-center">
                 <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Refresh className="h-6 w-6 text-indigo-600" />
+                  <RefreshCw className="h-6 w-6 text-indigo-600" />
                 </div>
                 <h3 className="font-semibold text-gray-800 mb-2">Instant</h3>
                 <p className="text-sm text-gray-600">
