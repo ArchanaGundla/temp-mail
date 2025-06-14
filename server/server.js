@@ -7,7 +7,7 @@ const { simpleParser } = require('mailparser');
 const app = express();
 const PORT = 3001;
 
-// Configuration
+// Configuration - Updated to match your Python settings
 const IMAP_CONFIG = {
   user: 'support@trueelement.in',
   password: 'trueelement@12',
@@ -15,8 +15,12 @@ const IMAP_CONFIG = {
   port: 993,
   tls: true,
   tlsOptions: {
-    rejectUnauthorized: false
-  }
+    rejectUnauthorized: false,
+    servername: 'imap.trueelement.in'
+  },
+  connTimeout: 60000,
+  authTimeout: 30000,
+  keepalive: false
 };
 
 const TEMP_EMAIL_DOMAIN = 'trueelement.in';
@@ -42,6 +46,26 @@ function cleanupExpiredEmails() {
       tempEmails.delete(email);
     }
   }
+}
+
+// Test IMAP connection
+function testImapConnection() {
+  return new Promise((resolve, reject) => {
+    const imap = new Imap(IMAP_CONFIG);
+    
+    imap.once('ready', () => {
+      console.log('IMAP connection successful');
+      imap.end();
+      resolve(true);
+    });
+
+    imap.once('error', (err) => {
+      console.error('IMAP connection failed:', err.message);
+      reject(err);
+    });
+
+    imap.connect();
+  });
 }
 
 // Fetch emails for specific address
@@ -115,6 +139,7 @@ function fetchEmailsForAddress(emailAddress) {
     });
 
     imap.once('error', (err) => {
+      console.error('IMAP Error:', err);
       reject(err);
     });
 
@@ -164,8 +189,18 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date() });
 });
 
-app.listen(PORT, () => {
-  console.log(`TempMail backend server running on http://localhost:${PORT}`);
-  console.log(`IMAP Server: ${IMAP_CONFIG.host}:${IMAP_CONFIG.port}`);
-  console.log(`Domain: ${TEMP_EMAIL_DOMAIN}`);
-});
+// Test IMAP connection on startup
+testImapConnection()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`TempMail backend server running on http://localhost:${PORT}`);
+      console.log(`IMAP Server: ${IMAP_CONFIG.host}:${IMAP_CONFIG.port}`);
+      console.log(`Domain: ${TEMP_EMAIL_DOMAIN}`);
+      console.log('IMAP authentication successful!');
+    });
+  })
+  .catch((err) => {
+    console.error('Failed to start server due to IMAP connection error:', err.message);
+    console.log('Please check your IMAP credentials and server settings.');
+    process.exit(1);
+  });
