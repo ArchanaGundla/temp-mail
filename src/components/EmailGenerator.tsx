@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -140,146 +139,121 @@ const EmailGenerator: React.FC<EmailGeneratorProps> = ({
   }, [expirationTime, setCurrentEmail, setExpirationTime, toast]);
 
   return (
-    <Card className="bg-white/95 backdrop-blur-lg border-2 border-blue-200 shadow-2xl hover:shadow-3xl transition-all duration-300 overflow-hidden relative">
-      {/* Enhanced gradient border effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-teal-500 rounded-lg p-[2px]">
-        <div className="bg-white/98 backdrop-blur-lg rounded-lg h-full w-full">
-          <CardHeader className="pb-4 relative bg-gradient-to-r from-blue-50 to-purple-50">
-            <CardTitle className="flex items-center justify-between text-gray-800">
-              <div className="flex items-center space-x-3">
-                <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl shadow-lg">
-                  <Mail className="h-6 w-6 text-white" />
+    <Card className="w-full max-w-md mx-auto bg-white shadow-xl border-2 border-blue-200 rounded-2xl overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6">
+        <CardTitle className="flex items-center space-x-3">
+          <Mail className="h-8 w-8" />
+          <div>
+            <h2 className="text-2xl font-bold">Email Generator</h2>
+            <p className="text-blue-100 text-sm">Create secure temporary emails</p>
+          </div>
+        </CardTitle>
+        {backendStatus === false && (
+          <div className="bg-red-500/20 border border-red-300 rounded-lg p-3 mt-4">
+            <div className="flex items-center space-x-2 text-red-100">
+              <AlertCircle className="h-5 w-5" />
+              <span className="text-sm">Backend server offline. Please start Node.js server on port 3001.</span>
+            </div>
+          </div>
+        )}
+      </CardHeader>
+      
+      <CardContent className="p-6 space-y-6">
+        {!currentEmail ? (
+          <div className="text-center space-y-6">
+            <div className="p-8 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl border-2 border-dashed border-blue-300">
+              <div className="mb-6">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <Mail className="h-10 w-10 text-white" />
                 </div>
-                <div>
-                  <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    Email Generator
-                  </span>
-                  <p className="text-sm text-gray-600 font-normal">Create secure temporary emails</p>
-                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Ready to Generate</h3>
+                <p className="text-gray-600">Click below to create your secure email</p>
               </div>
-              {backendStatus === false && (
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                  <AlertCircle className="h-5 w-5 text-red-500" />
+            </div>
+            
+            {/* SUPER PROMINENT GENERATE BUTTON */}
+            <Button 
+              onClick={generateEmail}
+              disabled={isGenerating || backendStatus === false}
+              size="lg"
+              className="w-full h-16 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold text-xl rounded-xl shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            >
+              {isGenerating ? (
+                <div className="flex items-center space-x-3">
+                  <RefreshCw className="h-7 w-7 animate-spin" />
+                  <span>Generating Email...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-3">
+                  <Mail className="h-7 w-7" />
+                  <span>🚀 Generate New Email</span>
                 </div>
               )}
-            </CardTitle>
-            {backendStatus === false && (
-              <div className="text-sm text-red-700 bg-red-50 p-4 rounded-xl border border-red-200 shadow-sm mt-4">
-                <div className="flex items-center space-x-2">
-                  <AlertCircle className="h-5 w-5" />
-                  <span className="font-medium">Backend server is offline. Please start the Node.js server on port 3001.</span>
-                </div>
-              </div>
-            )}
-          </CardHeader>
-          
-          <CardContent className="space-y-6 p-6">
-            {!currentEmail ? (
-              <div className="text-center space-y-6">
-                <div className="p-6 bg-gradient-to-br from-blue-50 via-purple-50 to-teal-50 rounded-2xl border-2 border-dashed border-blue-200">
-                  <div className="flex items-center justify-center space-x-2 text-gray-600 mb-4">
-                    <Clock className="h-5 w-5 text-blue-500" />
-                    <span className="text-lg font-medium">Ready to generate your secure email</span>
-                  </div>
-                  <p className="text-gray-500 text-sm">Click the button below to create a temporary email address</p>
-                </div>
-                
-                {/* Enhanced Generate Button - More Prominent */}
-                <Button 
-                  onClick={generateEmail}
-                  disabled={isGenerating || backendStatus === false}
-                  size="lg"
-                  className="w-full h-14 bg-gradient-to-r from-blue-600 via-purple-600 to-teal-600 hover:from-blue-700 hover:via-purple-700 hover:to-teal-700 text-white font-bold text-lg rounded-2xl shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none border-0"
-                >
-                  {isGenerating ? (
-                    <div className="flex items-center space-x-3">
-                      <RefreshCw className="h-6 w-6 animate-spin" />
-                      <span>Generating Email...</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-3">
-                      <Mail className="h-6 w-6" />
-                      <span>🚀 Generate New Email</span>
-                    </div>
-                  )}
-                </Button>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-lg font-bold text-gray-800 mb-3 block flex items-center space-x-2">
-                      <Mail className="h-5 w-5 text-blue-500" />
-                      <span>Your Temporary Email Address</span>
-                    </label>
-                    <div className="flex space-x-3">
-                      <div className="relative flex-1">
-                        <Input 
-                          value={currentEmail} 
-                          readOnly 
-                          className="font-mono text-base bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 focus:border-purple-300 rounded-xl pr-12 h-12 text-gray-800 shadow-sm"
-                        />
-                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse shadow-lg"></div>
-                        </div>
-                      </div>
-                      
-                      {/* Enhanced Copy Button - More Prominent */}
-                      <Button 
-                        onClick={copyToClipboard}
-                        size="lg"
-                        className="h-12 px-6 bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white font-bold rounded-xl shadow-xl hover:shadow-2xl transform hover:scale-110 transition-all duration-200 border-0"
-                      >
-                        <Copy className="h-5 w-5 mr-2" />
-                        <span className="text-base">Copy</span>
-                      </Button>
-                    </div>
-                  </div>
-
-                  {timeLeft && (
-                    <div className="p-4 bg-gradient-to-r from-blue-50 via-purple-50 to-teal-50 rounded-xl border border-blue-200 shadow-sm">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="p-2 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg shadow-sm">
-                            <Clock className="h-4 w-4 text-white" />
-                          </div>
-                          <div>
-                            <span className="text-sm font-semibold text-gray-800">Time Remaining</span>
-                            <p className="text-xs text-gray-600">Auto-expire protection active</p>
-                          </div>
-                        </div>
-                        <Badge className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-mono text-lg px-3 py-1 shadow-md">
-                          {timeLeft}
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-4">
+              <div>
+                <label className="text-lg font-semibold text-gray-800 mb-3 block flex items-center space-x-2">
+                  <Mail className="h-5 w-5 text-blue-600" />
+                  <span>Your Temporary Email</span>
+                </label>
                 <div className="flex space-x-3">
+                  <Input 
+                    value={currentEmail} 
+                    readOnly 
+                    className="font-mono text-lg bg-gray-50 border-2 border-blue-200 rounded-xl h-12 flex-1"
+                  />
+                  
+                  {/* PROMINENT COPY BUTTON */}
                   <Button 
-                    onClick={generateEmail}
+                    onClick={copyToClipboard}
                     size="lg"
-                    className="flex-1 h-12 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border-0"
-                    disabled={isGenerating || backendStatus === false}
+                    className="h-12 px-6 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
                   >
-                    <RefreshCw className={`h-5 w-5 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
-                    {isGenerating ? 'Generating...' : 'New Email'}
-                  </Button>
-                  <Button 
-                    onClick={deleteEmail}
-                    size="lg"
-                    className="h-12 px-6 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border-0"
-                  >
-                    <Trash2 className="h-5 w-5" />
+                    <Copy className="h-5 w-5 mr-2" />
+                    Copy
                   </Button>
                 </div>
-              </>
-            )}
-          </CardContent>
-        </div>
-      </div>
+              </div>
+
+              {timeLeft && (
+                <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Clock className="h-5 w-5 text-blue-600" />
+                      <span className="font-semibold text-gray-800">Time Remaining</span>
+                    </div>
+                    <Badge className="bg-blue-600 text-white font-mono text-lg px-3 py-1">
+                      {timeLeft}
+                    </Badge>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex space-x-3">
+              <Button 
+                onClick={generateEmail}
+                size="lg"
+                className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                disabled={isGenerating || backendStatus === false}
+              >
+                <RefreshCw className={`h-5 w-5 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
+                {isGenerating ? 'Generating...' : 'New Email'}
+              </Button>
+              <Button 
+                onClick={deleteEmail}
+                size="lg"
+                className="h-12 px-6 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+              >
+                <Trash2 className="h-5 w-5" />
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
     </Card>
   );
 };
