@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -78,7 +79,7 @@ const EmailGenerator: React.FC<EmailGeneratorProps> = ({
       try {
         await navigator.clipboard.writeText(currentEmail);
         toast({
-          title: "Copied!",
+          title: "✅ Copied!",
           description: "Email address copied to clipboard",
         });
       } catch (error) {
@@ -90,7 +91,7 @@ const EmailGenerator: React.FC<EmailGeneratorProps> = ({
         try {
           document.execCommand('copy');
           toast({
-            title: "Copied!",
+            title: "✅ Copied!",
             description: "Email address copied to clipboard",
           });
         } catch (fallbackError) {
@@ -139,56 +140,68 @@ const EmailGenerator: React.FC<EmailGeneratorProps> = ({
   }, [expirationTime, setCurrentEmail, setExpirationTime, toast]);
 
   return (
-    <Card className="bg-white/90 backdrop-blur-lg border-0 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden relative">
-      {/* Gradient border effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-teal-500 rounded-lg p-[1px]">
-        <div className="bg-white/95 backdrop-blur-lg rounded-lg h-full w-full">
-          <CardHeader className="pb-4 relative">
+    <Card className="bg-white/95 backdrop-blur-lg border-2 border-blue-200 shadow-2xl hover:shadow-3xl transition-all duration-300 overflow-hidden relative">
+      {/* Enhanced gradient border effect */}
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-teal-500 rounded-lg p-[2px]">
+        <div className="bg-white/98 backdrop-blur-lg rounded-lg h-full w-full">
+          <CardHeader className="pb-4 relative bg-gradient-to-r from-blue-50 to-purple-50">
             <CardTitle className="flex items-center justify-between text-gray-800">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg shadow-md">
-                  <Mail className="h-5 w-5 text-white" />
+                <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl shadow-lg">
+                  <Mail className="h-6 w-6 text-white" />
                 </div>
-                <span className="text-xl font-bold">Email Generator</span>
+                <div>
+                  <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Email Generator
+                  </span>
+                  <p className="text-sm text-gray-600 font-normal">Create secure temporary emails</p>
+                </div>
               </div>
               {backendStatus === false && (
                 <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                  <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
                   <AlertCircle className="h-5 w-5 text-red-500" />
                 </div>
               )}
             </CardTitle>
             {backendStatus === false && (
-              <div className="text-sm text-red-700 bg-red-50 p-3 rounded-lg border border-red-200 shadow-sm">
+              <div className="text-sm text-red-700 bg-red-50 p-4 rounded-xl border border-red-200 shadow-sm mt-4">
                 <div className="flex items-center space-x-2">
-                  <AlertCircle className="h-4 w-4" />
+                  <AlertCircle className="h-5 w-5" />
                   <span className="font-medium">Backend server is offline. Please start the Node.js server on port 3001.</span>
                 </div>
               </div>
             )}
           </CardHeader>
-          <CardContent className="space-y-6">
+          
+          <CardContent className="space-y-6 p-6">
             {!currentEmail ? (
-              <div className="text-center space-y-4">
-                <div className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl border border-blue-100">
-                  <div className="flex items-center justify-center space-x-2 text-gray-600 mb-2">
-                    <Clock className="h-4 w-4" />
-                    <span className="text-sm">Ready to generate your secure email</span>
+              <div className="text-center space-y-6">
+                <div className="p-6 bg-gradient-to-br from-blue-50 via-purple-50 to-teal-50 rounded-2xl border-2 border-dashed border-blue-200">
+                  <div className="flex items-center justify-center space-x-2 text-gray-600 mb-4">
+                    <Clock className="h-5 w-5 text-blue-500" />
+                    <span className="text-lg font-medium">Ready to generate your secure email</span>
                   </div>
+                  <p className="text-gray-500 text-sm">Click the button below to create a temporary email address</p>
                 </div>
+                
+                {/* Enhanced Generate Button - More Prominent */}
                 <Button 
                   onClick={generateEmail}
                   disabled={isGenerating || backendStatus === false}
-                  className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-teal-500 hover:from-blue-600 hover:via-purple-600 hover:to-teal-600 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  size="lg"
+                  className="w-full h-14 bg-gradient-to-r from-blue-600 via-purple-600 to-teal-600 hover:from-blue-700 hover:via-purple-700 hover:to-teal-700 text-white font-bold text-lg rounded-2xl shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none border-0"
                 >
-                  <Mail className="h-5 w-5 mr-2" />
                   {isGenerating ? (
-                    <div className="flex items-center space-x-2">
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      <span>Generating...</span>
+                    <div className="flex items-center space-x-3">
+                      <RefreshCw className="h-6 w-6 animate-spin" />
+                      <span>Generating Email...</span>
                     </div>
                   ) : (
-                    'Generate New Email'
+                    <div className="flex items-center space-x-3">
+                      <Mail className="h-6 w-6" />
+                      <span>🚀 Generate New Email</span>
+                    </div>
                   )}
                 </Button>
               </div>
@@ -196,27 +209,30 @@ const EmailGenerator: React.FC<EmailGeneratorProps> = ({
               <>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-semibold text-gray-700 mb-2 block flex items-center space-x-2">
-                      <Mail className="h-4 w-4 text-blue-500" />
-                      <span>Your Temporary Email</span>
+                    <label className="text-lg font-bold text-gray-800 mb-3 block flex items-center space-x-2">
+                      <Mail className="h-5 w-5 text-blue-500" />
+                      <span>Your Temporary Email Address</span>
                     </label>
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-3">
                       <div className="relative flex-1">
                         <Input 
                           value={currentEmail} 
                           readOnly 
-                          className="font-mono text-sm bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 focus:border-purple-300 rounded-xl pr-10 shadow-sm"
+                          className="font-mono text-base bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 focus:border-purple-300 rounded-xl pr-12 h-12 text-gray-800 shadow-sm"
                         />
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse shadow-lg"></div>
                         </div>
                       </div>
+                      
+                      {/* Enhanced Copy Button - More Prominent */}
                       <Button 
                         onClick={copyToClipboard}
-                        size="sm"
-                        className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white rounded-xl shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                        size="lg"
+                        className="h-12 px-6 bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white font-bold rounded-xl shadow-xl hover:shadow-2xl transform hover:scale-110 transition-all duration-200 border-0"
                       >
-                        <Copy className="h-4 w-4" />
+                        <Copy className="h-5 w-5 mr-2" />
+                        <span className="text-base">Copy</span>
                       </Button>
                     </div>
                   </div>
@@ -244,19 +260,19 @@ const EmailGenerator: React.FC<EmailGeneratorProps> = ({
                 <div className="flex space-x-3">
                   <Button 
                     onClick={generateEmail}
-                    size="sm"
-                    className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white rounded-xl shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                    size="lg"
+                    className="flex-1 h-12 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border-0"
                     disabled={isGenerating || backendStatus === false}
                   >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`h-5 w-5 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
                     {isGenerating ? 'Generating...' : 'New Email'}
                   </Button>
                   <Button 
                     onClick={deleteEmail}
-                    size="sm"
-                    className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white rounded-xl shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                    size="lg"
+                    className="h-12 px-6 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border-0"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-5 w-5" />
                   </Button>
                 </div>
               </>
