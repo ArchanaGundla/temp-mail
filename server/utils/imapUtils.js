@@ -1,4 +1,3 @@
-
 const Imap = require('imap');
 const { simpleParser } = require('mailparser');
 
@@ -109,26 +108,19 @@ function fetchEmailsForAddress(emailAddress) {
           return;
         }
 
-        // First, let's try to get all recent emails and then filter them
+        // Get all emails to search through
         console.log(`🔍 Fetching recent emails to search for ${emailAddress}`);
         
-        // Get the last 50 emails to search through
-        const totalMessages = box.messages.total;
-        const startSeq = Math.max(1, totalMessages - 49); // Last 50 messages
-        const endSeq = totalMessages;
-        
-        console.log(`📥 Fetching messages ${startSeq} to ${endSeq}`);
-        
-        const f = imap.fetch(`${startSeq}:${endSeq}`, { 
+        const f = imap.fetch('1:*', { 
           bodies: '',
           struct: true 
         });
 
         let processedCount = 0;
-        const totalToProcess = endSeq - startSeq + 1;
+        const totalToProcess = box.messages.total;
 
         f.on('message', (msg, seqno) => {
-          console.log(`📨 Processing message ${seqno}`);
+          console.log(`\n📨 Processing message ${seqno}`);
           let buffer = '';
           
           msg.on('body', (stream, info) => {
@@ -140,42 +132,69 @@ function fetchEmailsForAddress(emailAddress) {
           msg.once('end', () => {
             simpleParser(buffer, (err, parsed) => {
               if (!err && parsed) {
-                // Check if this email is for our generated address
+                // Enhanced debugging for email analysis
+                console.log(`\n🔍 DETAILED ANALYSIS for message ${seqno}:`);
+                console.log(`   From: ${parsed.from ? parsed.from.text : 'Unknown'}`);
+                console.log(`   Subject: ${parsed.subject || 'No Subject'}`);
+                console.log(`   Date: ${parsed.date || 'No Date'}`);
+                
+                // Get all possible recipient fields
                 const toAddresses = parsed.to ? parsed.to.value || [] : [];
                 const ccAddresses = parsed.cc ? parsed.cc.value || [] : [];
                 const bccAddresses = parsed.bcc ? parsed.bcc.value || [] : [];
                 
-                // Also check raw headers for more comprehensive matching
+                // Get raw headers
                 const rawTo = parsed.headers.get('to') || '';
                 const rawCc = parsed.headers.get('cc') || '';
                 const rawBcc = parsed.headers.get('bcc') || '';
+                const deliveredTo = parsed.headers.get('delivered-to') || '';
+                const xOriginalTo = parsed.headers.get('x-original-to') || '';
                 
+                console.log(`   📧 RECIPIENT ANALYSIS:`);
+                console.log(`     Raw TO header: "${rawTo}"`);
+                console.log(`     Raw CC header: "${rawCc}"`);
+                console.log(`     Raw BCC header: "${rawBcc}"`);
+                console.log(`     Delivered-To header: "${deliveredTo}"`);
+                console.log(`     X-Original-To header: "${xOriginalTo}"`);
+                
+                // Extract all email addresses
                 const allRecipients = [
                   ...toAddresses.map(addr => addr.address?.toLowerCase()),
                   ...ccAddresses.map(addr => addr.address?.toLowerCase()),
                   ...bccAddresses.map(addr => addr.address?.toLowerCase())
                 ].filter(Boolean);
-
-                // Also check raw headers (case-insensitive)
+                
+                console.log(`     Parsed recipients: [${allRecipients.join(', ')}]`);
+                
+                // Check for matches
                 const targetEmail = emailAddress.toLowerCase();
-                const foundInRaw = rawTo.toLowerCase().includes(targetEmail) || 
-                                 rawCc.toLowerCase().includes(targetEmail) || 
-                                 rawBcc.toLowerCase().includes(targetEmail);
+                console.log(`     Target email: "${targetEmail}"`);
                 
-                const isForOurEmail = allRecipients.includes(targetEmail) || foundInRaw;
+                // Multiple ways to check for matches
+                const foundInParsed = allRecipients.includes(targetEmail);
+                const foundInRawTo = rawTo.toLowerCase().includes(targetEmail);
+                const foundInRawCc = rawCc.toLowerCase().includes(targetEmail);
+                const foundInRawBcc = rawBcc.toLowerCase().includes(targetEmail);
+                const foundInDeliveredTo = deliveredTo.toLowerCase().includes(targetEmail);
+                const foundInXOriginalTo = xOriginalTo.toLowerCase().includes(targetEmail);
                 
-                console.log(`📧 Message ${seqno} analysis:`);
-                console.log(`   From: ${parsed.from ? parsed.from.text : 'Unknown'}`);
-                console.log(`   Subject: ${parsed.subject || 'No Subject'}`);
-                console.log(`   To: ${rawTo}`);
-                console.log(`   Recipients found: ${allRecipients.join(', ')}`);
-                console.log(`   Target email: ${targetEmail}`);
-                console.log(`   Match: ${isForOurEmail ? '✅ YES' : '❌ NO'}`);
+                console.log(`     🔍 MATCH CHECKS:`);
+                console.log(`       - Parsed recipients: ${foundInParsed ? '✅' : '❌'}`);
+                console.log(`       - Raw TO header: ${foundInRawTo ? '✅' : '❌'}`);
+                console.log(`       - Raw CC header: ${foundInRawCc ? '✅' : '❌'}`);
+                console.log(`       - Raw BCC header: ${foundInRawBcc ? '✅' : '❌'}`);
+                console.log(`       - Delivered-To header: ${foundInDeliveredTo ? '✅' : '❌'}`);
+                console.log(`       - X-Original-To header: ${foundInXOriginalTo ? '✅' : '❌'}`);
+                
+                const isForOurEmail = foundInParsed || foundInRawTo || foundInRawCc || 
+                                     foundInRawBcc || foundInDeliveredTo || foundInXOriginalTo;
+                
+                console.log(`     📊 FINAL MATCH RESULT: ${isForOurEmail ? '✅ MATCH!' : '❌ NO MATCH'}`);
                 
                 if (isForOurEmail) {
-                  console.log(`✅ Email ${seqno} is for ${emailAddress} - ADDING TO RESULTS`);
+                  console.log(`\n🎉 EMAIL ${seqno} IS FOR ${emailAddress} - ADDING TO RESULTS`);
                   
-                  messages.push({
+                  const emailMessage = {
                     id: seqno.toString(),
                     from: parsed.from ? parsed.from.text : 'Unknown',
                     subject: parsed.subject || 'No Subject',
@@ -183,30 +202,38 @@ function fetchEmailsForAddress(emailAddress) {
                     body: parsed.html || parsed.text || 'No body content',
                     timestamp: parsed.date || new Date(),
                     read: false
-                  });
+                  };
+                  
+                  messages.push(emailMessage);
+                  console.log(`   📝 Added message: ${emailMessage.subject}`);
+                } else {
+                  console.log(`\n⚠️  EMAIL ${seqno} NOT FOR ${emailAddress} - SKIPPING`);
                 }
               } else if (err) {
                 console.error(`❌ Error parsing email ${seqno}:`, err);
               }
               
               processedCount++;
-              console.log(`📊 Processed ${processedCount}/${totalToProcess} emails`);
+              console.log(`\n📊 Progress: ${processedCount}/${totalToProcess} emails processed`);
               
               if (processedCount === totalToProcess) {
-                console.log(`🎉 Email processing complete!`);
-                console.log(`📊 Total emails found for ${emailAddress}: ${messages.length}`);
+                console.log(`\n🎉 EMAIL PROCESSING COMPLETE!`);
+                console.log(`📊 FINAL RESULTS:`);
+                console.log(`   - Total emails in inbox: ${totalToProcess}`);
+                console.log(`   - Emails found for ${emailAddress}: ${messages.length}`);
                 
                 if (messages.length > 0) {
-                  console.log(`📋 Found emails:`);
+                  console.log(`   📋 Found emails:`);
                   messages.forEach((msg, index) => {
-                    console.log(`   ${index + 1}. From: ${msg.from}, Subject: ${msg.subject}`);
+                    console.log(`     ${index + 1}. From: ${msg.from}, Subject: "${msg.subject}"`);
                   });
                 } else {
-                  console.log(`⚠️  No emails found for ${emailAddress}`);
-                  console.log(`💡 This could mean:`);
+                  console.log(`\n⚠️  NO EMAILS FOUND FOR ${emailAddress}`);
+                  console.log(`💡 Possible reasons:`);
                   console.log(`   - No emails have been sent to this address yet`);
-                  console.log(`   - Emails are in a different folder (check Spam/Junk)`);
-                  console.log(`   - Email server configuration issue`);
+                  console.log(`   - Emails are in a different folder (Spam/Junk)`);
+                  console.log(`   - Email address mismatch in headers`);
+                  console.log(`   - Email server forwarding configuration`);
                 }
                 
                 imap.end();
@@ -222,7 +249,7 @@ function fetchEmailsForAddress(emailAddress) {
         });
 
         f.once('end', () => {
-          console.log('📥 Fetch completed');
+          console.log('📥 Fetch operation completed');
         });
       });
     });
