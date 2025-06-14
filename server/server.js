@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const Imap = require('imap');
@@ -63,8 +62,8 @@ let WORKING_CONFIG = null;
 const TEMP_EMAIL_DOMAIN = 'trueelement.in';
 const TEMP_EMAIL_LIFETIME = 600000; // 10 minutes in milliseconds
 
-// In-memory store for emails and expiration timestamps
-const tempEmails = new Map(); // { email_address: expiration_timestamp }
+// In-memory store for emails and their messages with expiration timestamps
+const tempEmails = new Map(); // { email_address: { expiration: timestamp, messages: [] } }
 
 app.use(cors());
 app.use(express.json());
@@ -75,13 +74,20 @@ function generateRandomEmail() {
   return `${prefix}@${TEMP_EMAIL_DOMAIN}`;
 }
 
-// Cleanup expired emails
+// Cleanup expired emails and their messages
 function cleanupExpiredEmails() {
   const now = Date.now();
-  for (const [email, expiry] of tempEmails.entries()) {
-    if (expiry < now) {
+  const expiredEmails = [];
+  
+  for (const [email, data] of tempEmails.entries()) {
+    if (data.expiration < now) {
+      expiredEmails.push(email);
       tempEmails.delete(email);
     }
+  }
+  
+  if (expiredEmails.length > 0) {
+    console.log(`🗑️  Cleaned up ${expiredEmails.length} expired emails:`, expiredEmails);
   }
 }
 
@@ -132,7 +138,7 @@ function testImapConnection() {
   });
 }
 
-// Fetch emails for specific address
+// Fetch emails for specific address with precise filtering
 function fetchEmailsForAddress(emailAddress) {
   return new Promise((resolve, reject) => {
     if (!WORKING_CONFIG) {
@@ -156,18 +162,42 @@ function fetchEmailsForAddress(emailAddress) {
 
         console.log(`📧 INBOX opened successfully`);
         console.log(`📊 Total messages in inbox: ${box.messages.total}`);
-        console.log(`📊 New messages: ${box.messages.new}`);
 
-        // Search for emails sent to the specific address
+        // Search for emails sent specifically TO the generated email address
         console.log(`🔍 Searching for emails TO: ${emailAddress}`);
-        imap.search([['TO', emailAddress]], (err, results) => {
+        
+        // Use more specific search criteria
+        const searchCriteria = [
+          ['TO', emailAddress]
+        ];
+        
+        // Also search in CC and BCC fields to be thorough
+        imap.search([
+          'OR', 
+          ['TO', emailAddress], 
+          'OR',
+          ['CC', emailAddress],
+          ['BCC', emailAddress]
+        ], (err, results) => {
           if (err) {
             console.error('❌ Search error:', err);
-            reject(err);
+            // Try simpler search if complex search fails
+            imap.search([['TO', emailAddress]], (err2, results2) => {
+              if (err2) {
+                console.error('❌ Simple search also failed:', err2);
+                reject(err2);
+                return;
+              }
+              processSearchResults(results2 || []);
+            });
             return;
           }
+          
+          processSearchResults(results || []);
+        });
 
-          console.log(`📊 Search results: ${results ? results.length : 0} emails found`);
+        function processSearchResults(results) {
+          console.log(`📊 Search results: ${results.length} emails found for ${emailAddress}`);
           console.log(`📋 Message IDs:`, results);
 
           if (!results || !results.length) {
@@ -176,17 +206,21 @@ function fetchEmailsForAddress(emailAddress) {
             return;
           }
 
-          // If we have too many results, limit to last 10
-          const recentResults = results.slice(-10);
+          // Process recent emails (limit to last 20 for performance)
+          const recentResults = results.slice(-20);
           console.log(`📥 Processing ${recentResults.length} recent emails`);
           
           let processedCount = 0;
 
-          const f = imap.fetch(recentResults, { bodies: '' });
+          const f = imap.fetch(recentResults, { 
+            bodies: '',
+            struct: true 
+          });
 
           f.on('message', (msg, seqno) => {
             console.log(`📨 Processing message ${seqno}`);
             let buffer = '';
+            let messageHeaders = {};
             
             msg.on('body', (stream, info) => {
               stream.on('data', (chunk) => {
@@ -194,23 +228,46 @@ function fetchEmailsForAddress(emailAddress) {
               });
             });
 
+            msg.on('attributes', (attrs) => {
+              messageHeaders = attrs;
+            });
+
             msg.once('end', () => {
+              const { simpleParser } = require('mailparser');
               simpleParser(buffer, (err, parsed) => {
                 if (!err && parsed) {
-                  console.log(`✅ Successfully parsed email ${seqno}:`);
-                  console.log(`   From: ${parsed.from ? parsed.from.text : 'Unknown'}`);
-                  console.log(`   Subject: ${parsed.subject || 'No Subject'}`);
-                  console.log(`   Date: ${parsed.date}`);
+                  // Double-check that this email is actually for our generated address
+                  const toAddresses = parsed.to ? parsed.to.value : [];
+                  const ccAddresses = parsed.cc ? parsed.cc.value : [];
+                  const bccAddresses = parsed.bcc ? parsed.bcc.value : [];
                   
-                  messages.push({
-                    id: seqno.toString(),
-                    from: parsed.from ? parsed.from.text : 'Unknown',
-                    subject: parsed.subject || 'No Subject',
-                    preview: parsed.text ? parsed.text.substring(0, 100) + '...' : 'No preview available',
-                    body: parsed.html || parsed.text || 'No body content',
-                    timestamp: parsed.date || new Date(),
-                    read: false
-                  });
+                  const allRecipients = [
+                    ...toAddresses.map(addr => addr.address?.toLowerCase()),
+                    ...ccAddresses.map(addr => addr.address?.toLowerCase()),
+                    ...bccAddresses.map(addr => addr.address?.toLowerCase())
+                  ].filter(Boolean);
+
+                  const isForOurEmail = allRecipients.includes(emailAddress.toLowerCase());
+                  
+                  if (isForOurEmail) {
+                    console.log(`✅ Confirmed email ${seqno} is for ${emailAddress}:`);
+                    console.log(`   From: ${parsed.from ? parsed.from.text : 'Unknown'}`);
+                    console.log(`   Subject: ${parsed.subject || 'No Subject'}`);
+                    console.log(`   Date: ${parsed.date}`);
+                    
+                    messages.push({
+                      id: seqno.toString(),
+                      from: parsed.from ? parsed.from.text : 'Unknown',
+                      subject: parsed.subject || 'No Subject',
+                      preview: parsed.text ? parsed.text.substring(0, 100) + '...' : 'No preview available',
+                      body: parsed.html || parsed.text || 'No body content',
+                      timestamp: parsed.date || new Date(),
+                      read: false
+                    });
+                  } else {
+                    console.log(`❌ Email ${seqno} is not for ${emailAddress}, skipping`);
+                    console.log(`   Recipients:`, allRecipients);
+                  }
                 } else if (err) {
                   console.error(`❌ Error parsing email ${seqno}:`, err);
                 }
@@ -219,7 +276,7 @@ function fetchEmailsForAddress(emailAddress) {
                 console.log(`📊 Processed ${processedCount}/${recentResults.length} emails`);
                 
                 if (processedCount === recentResults.length) {
-                  console.log(`🎉 All emails processed successfully`);
+                  console.log(`🎉 Email processing complete. Found ${messages.length} emails for ${emailAddress}`);
                   imap.end();
                   resolve(messages.reverse()); // Most recent first
                 }
@@ -231,19 +288,12 @@ function fetchEmailsForAddress(emailAddress) {
             console.error('❌ Fetch error:', err);
             reject(err);
           });
-        });
+        }
       });
     });
 
     imap.once('error', (err) => {
       console.error('❌ IMAP connection error:', err);
-      console.error('Error details:', {
-        code: err.code,
-        errno: err.errno,
-        syscall: err.syscall,
-        address: err.address,
-        port: err.port
-      });
       reject(err);
     });
 
@@ -257,13 +307,22 @@ app.post('/api/create-temp-email', (req, res) => {
 
   const emailAddr = generateRandomEmail();
   const expirationTime = Date.now() + TEMP_EMAIL_LIFETIME;
-  tempEmails.set(emailAddr, expirationTime);
+  
+  // Store email with expiration and empty messages array
+  tempEmails.set(emailAddr, {
+    expiration: expirationTime,
+    messages: []
+  });
 
   console.log(`Generated temporary email: ${emailAddr}`);
+  console.log(`Email will expire at: ${new Date(expirationTime)}`);
 
   // Auto-cleanup after expiration
   setTimeout(() => {
-    tempEmails.delete(emailAddr);
+    if (tempEmails.has(emailAddr)) {
+      console.log(`🗑️  Auto-cleanup: Removing expired email ${emailAddr}`);
+      tempEmails.delete(emailAddr);
+    }
   }, TEMP_EMAIL_LIFETIME);
 
   res.json({
@@ -289,6 +348,14 @@ app.get('/api/emails/:emailAddress', async (req, res) => {
 
   try {
     const messages = await fetchEmailsForAddress(emailAddress);
+    
+    // Update stored messages for this email
+    const emailData = tempEmails.get(emailAddress);
+    if (emailData) {
+      emailData.messages = messages;
+      tempEmails.set(emailAddress, emailData);
+    }
+    
     console.log(`🎉 Successfully fetched ${messages.length} messages for ${emailAddress}`);
     res.json({ messages });
   } catch (error) {
