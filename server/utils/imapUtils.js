@@ -1,3 +1,4 @@
+
 const Imap = require('imap');
 const { simpleParser } = require('mailparser');
 
@@ -143,12 +144,19 @@ function fetchEmailsForAddress(emailAddress) {
                 const ccAddresses = parsed.cc ? parsed.cc.value || [] : [];
                 const bccAddresses = parsed.bcc ? parsed.bcc.value || [] : [];
                 
-                // Get raw headers
-                const rawTo = parsed.headers.get('to') || '';
-                const rawCc = parsed.headers.get('cc') || '';
-                const rawBcc = parsed.headers.get('bcc') || '';
-                const deliveredTo = parsed.headers.get('delivered-to') || '';
-                const xOriginalTo = parsed.headers.get('x-original-to') || '';
+                // Get raw headers and convert to strings properly
+                const rawToHeader = parsed.headers.get('to');
+                const rawCcHeader = parsed.headers.get('cc');
+                const rawBccHeader = parsed.headers.get('bcc');
+                const deliveredToHeader = parsed.headers.get('delivered-to');
+                const xOriginalToHeader = parsed.headers.get('x-original-to');
+                
+                // Convert headers to strings safely
+                const rawTo = rawToHeader ? (typeof rawToHeader === 'string' ? rawToHeader : JSON.stringify(rawToHeader)) : '';
+                const rawCc = rawCcHeader ? (typeof rawCcHeader === 'string' ? rawCcHeader : JSON.stringify(rawCcHeader)) : '';
+                const rawBcc = rawBccHeader ? (typeof rawBccHeader === 'string' ? rawBccHeader : JSON.stringify(rawBccHeader)) : '';
+                const deliveredTo = deliveredToHeader ? (typeof deliveredToHeader === 'string' ? deliveredToHeader : JSON.stringify(deliveredToHeader)) : '';
+                const xOriginalTo = xOriginalToHeader ? (typeof xOriginalToHeader === 'string' ? xOriginalToHeader : JSON.stringify(xOriginalToHeader)) : '';
                 
                 console.log(`   📧 RECIPIENT ANALYSIS:`);
                 console.log(`     Raw TO header: "${rawTo}"`);

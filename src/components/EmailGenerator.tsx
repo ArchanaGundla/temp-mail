@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -73,13 +74,35 @@ const EmailGenerator: React.FC<EmailGeneratorProps> = ({
     }
   };
 
-  const copyToClipboard = () => {
+  const copyToClipboard = async () => {
     if (currentEmail) {
-      navigator.clipboard.writeText(currentEmail);
-      toast({
-        title: "Copied!",
-        description: "Email address copied to clipboard",
-      });
+      try {
+        await navigator.clipboard.writeText(currentEmail);
+        toast({
+          title: "Copied!",
+          description: "Email address copied to clipboard",
+        });
+      } catch (error) {
+        // Fallback for older browsers or when clipboard API fails
+        const textArea = document.createElement('textarea');
+        textArea.value = currentEmail;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          toast({
+            title: "Copied!",
+            description: "Email address copied to clipboard",
+          });
+        } catch (fallbackError) {
+          toast({
+            title: "Copy Failed",
+            description: "Unable to copy to clipboard",
+            variant: "destructive"
+          });
+        }
+        document.body.removeChild(textArea);
+      }
     }
   };
 
