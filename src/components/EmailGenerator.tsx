@@ -1,12 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Copy, Mail, Clock, Trash2, RefreshCw } from 'lucide-react';
+import { Copy, Mail, Clock, Trash2, RefreshCw, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { emailService } from '@/services/emailService';
 
 interface EmailGeneratorProps {
   currentEmail: string | null;
@@ -21,37 +21,56 @@ const EmailGenerator: React.FC<EmailGeneratorProps> = ({
   expirationTime,
   setExpirationTime
 }) => {
-  const [duration, setDuration] = useState('10');
   const [timeLeft, setTimeLeft] = useState<string>('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [backendStatus, setBackendStatus] = useState<boolean | null>(null);
   const { toast } = useToast();
 
-  const domains = [
-    'tempmail.pro',
-    'quickmail.temp',
-    'instant.email',
-    'privacy.mail'
-  ];
+  // Check backend health on component mount
+  useEffect(() => {
+    const checkBackend = async () => {
+      const isHealthy = await emailService.checkHealth();
+      setBackendStatus(isHealthy);
+      if (!isHealthy) {
+        toast({
+          title: "Backend Offline",
+          description: "Please start the Node.js backend server on port 3001",
+          variant: "destructive"
+        });
+      }
+    };
+    checkBackend();
+  }, [toast]);
 
-  const generateRandomEmail = () => {
-    const prefixes = ['temp', 'quick', 'anon', 'user', 'mail', 'inbox'];
-    const randomPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-    const randomNumber = Math.floor(Math.random() * 9999);
-    const randomDomain = domains[Math.floor(Math.random() * domains.length)];
-    
-    return `${randomPrefix}${randomNumber}@${randomDomain}`;
-  };
+  const generateEmail = async () => {
+    if (!backendStatus) {
+      toast({
+        title: "Backend Offline",
+        description: "Please start the Node.js backend server first",
+        variant: "destructive"
+      });
+      return;
+    }
 
-  const generateEmail = () => {
-    const newEmail = generateRandomEmail();
-    const expirationDate = new Date(Date.now() + parseInt(duration) * 60 * 1000);
-    
-    setCurrentEmail(newEmail);
-    setExpirationTime(expirationDate);
-    
-    toast({
-      title: "Email Generated!",
-      description: `Your temporary email is ready: ${newEmail}`,
-    });
+    setIsGenerating(true);
+    try {
+      const response = await emailService.createTempEmail();
+      setCurrentEmail(response.email);
+      setExpirationTime(response.expirationTime);
+      
+      toast({
+        title: "Email Generated!",
+        description: `Your temporary email is ready: ${response.email}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to generate email",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const copyToClipboard = () => {
@@ -100,40 +119,31 @@ const EmailGenerator: React.FC<EmailGeneratorProps> = ({
   return (
     <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-lg">
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center space-x-2 text-gray-800">
-          <Mail className="h-5 w-5 text-blue-600" />
-          <span>Email Generator</span>
+        <CardTitle className="flex items-center justify-between text-gray-800">
+          <div className="flex items-center space-x-2">
+            <Mail className="h-5 w-5 text-blue-600" />
+            <span>Email Generator</span>
+          </div>
+          {backendStatus === false && (
+            <AlertCircle className="h-5 w-5 text-red-500" />
+          )}
         </CardTitle>
+        {backendStatus === false && (
+          <div className="text-sm text-red-600 bg-red-50 p-2 rounded border border-red-200">
+            Backend server is offline. Please start the Node.js server on port 3001.
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {!currentEmail ? (
-          <>
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                Email Duration
-              </label>
-              <Select value={duration} onValueChange={setDuration}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5 minutes</SelectItem>
-                  <SelectItem value="10">10 minutes</SelectItem>
-                  <SelectItem value="30">30 minutes</SelectItem>
-                  <SelectItem value="60">1 hour</SelectItem>
-                  <SelectItem value="120">2 hours</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <Button 
-              onClick={generateEmail}
-              className="w-full bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white"
-            >
-              <Mail className="h-4 w-4 mr-2" />
-              Generate New Email
-            </Button>
-          </>
+          <Button 
+            onClick={generateEmail}
+            disabled={isGenerating || backendStatus === false}
+            className="w-full bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white"
+          >
+            <Mail className="h-4 w-4 mr-2" />
+            {isGenerating ? 'Generating...' : 'Generate New Email'}
+          </Button>
         ) : (
           <>
             <div className="space-y-3">
@@ -177,9 +187,10 @@ const EmailGenerator: React.FC<EmailGeneratorProps> = ({
                 size="sm"
                 variant="outline"
                 className="flex-1"
+                disabled={isGenerating || backendStatus === false}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
-                New Email
+                {isGenerating ? 'Generating...' : 'New Email'}
               </Button>
               <Button 
                 onClick={deleteEmail}
