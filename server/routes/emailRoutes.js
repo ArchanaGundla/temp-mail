@@ -9,6 +9,7 @@ const router = express.Router();
 router.post('/create-temp-email', (req, res) => {
   try {
     const result = createTempEmail();
+    console.log(`✅ Created temp email: ${result.email}`);
     res.json(result);
   } catch (error) {
     console.error('❌ Error creating temp email:', error);
@@ -21,6 +22,7 @@ router.get('/emails/:emailAddress', async (req, res) => {
   const { emailAddress } = req.params;
   
   console.log(`\n=== API Request: Fetching emails for ${emailAddress} ===`);
+  console.log(`🕐 Request time: ${new Date().toISOString()}`);
 
   if (!isValidTempEmail(emailAddress)) {
     console.log(`❌ Email ${emailAddress} expired or does not exist`);
@@ -31,16 +33,36 @@ router.get('/emails/:emailAddress', async (req, res) => {
   console.log(`✅ Email ${emailAddress} is valid and active`);
 
   try {
+    console.log(`🔍 Starting email fetch process...`);
     const messages = await fetchEmailsForAddress(emailAddress);
+    
+    console.log(`📊 Fetch completed. Messages found: ${messages.length}`);
     
     // Update stored messages for this email
     updateEmailMessages(emailAddress, messages);
     
-    console.log(`🎉 Successfully fetched ${messages.length} messages for ${emailAddress}`);
-    res.json({ messages });
+    console.log(`🎉 Successfully processed ${messages.length} messages for ${emailAddress}`);
+    console.log(`📤 Sending response to client...`);
+    
+    res.json({ 
+      messages,
+      debug: {
+        emailAddress,
+        messageCount: messages.length,
+        timestamp: new Date().toISOString()
+      }
+    });
   } catch (error) {
     console.error('❌ Error in API endpoint:', error);
-    res.status(500).json({ error: `Failed to fetch emails: ${error.message}` });
+    console.error('❌ Error stack:', error.stack);
+    res.status(500).json({ 
+      error: `Failed to fetch emails: ${error.message}`,
+      debug: {
+        emailAddress,
+        errorType: error.constructor.name,
+        timestamp: new Date().toISOString()
+      }
+    });
   }
 });
 

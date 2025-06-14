@@ -17,8 +17,7 @@ const IMAP_CONFIGS = [
     },
     connTimeout: 60000,
     authTimeout: 30000,
-    keepalive: false,
-    debug: console.log
+    keepalive: false
   },
   // Config 2: Try with STARTTLS
   {
@@ -33,23 +32,7 @@ const IMAP_CONFIGS = [
     },
     connTimeout: 60000,
     authTimeout: 30000,
-    keepalive: false,
-    debug: console.log
-  },
-  // Config 3: Try different port
-  {
-    user: 'support@trueelement.in',
-    password: 'trueelement@12',
-    host: 'imap.trueelement.in',
-    port: 993,
-    tls: true,
-    tlsOptions: {
-      rejectUnauthorized: false
-    },
-    connTimeout: 60000,
-    authTimeout: 30000,
-    keepalive: false,
-    debug: console.log
+    keepalive: false
   }
 ];
 
@@ -83,15 +66,8 @@ function testImapConnection() {
 
       imap.once('error', (err) => {
         console.error(`❌ IMAP config ${configIndex + 1} failed:`, err.message);
-        console.error(`Error details:`, {
-          code: err.code,
-          errno: err.errno,
-          syscall: err.syscall,
-          address: err.address,
-          port: err.port
-        });
         configIndex++;
-        setTimeout(tryNextConfig, 2000); // Wait 2 seconds before trying next config
+        setTimeout(tryNextConfig, 2000);
       });
 
       console.log(`Attempting to connect...`);
@@ -102,7 +78,7 @@ function testImapConnection() {
   });
 }
 
-// Fetch emails for specific address with precise filtering
+// Fetch emails for specific address with improved filtering
 function fetchEmailsForAddress(emailAddress) {
   return new Promise((resolve, reject) => {
     if (!WORKING_CONFIG) {
@@ -127,126 +103,127 @@ function fetchEmailsForAddress(emailAddress) {
         console.log(`📧 INBOX opened successfully`);
         console.log(`📊 Total messages in inbox: ${box.messages.total}`);
 
-        // Search for emails sent specifically TO the generated email address
-        console.log(`🔍 Searching for emails TO: ${emailAddress}`);
+        if (box.messages.total === 0) {
+          console.log(`ℹ️  No messages in inbox`);
+          resolve([]);
+          return;
+        }
+
+        // First, let's try to get all recent emails and then filter them
+        console.log(`🔍 Fetching recent emails to search for ${emailAddress}`);
         
-        // Use more specific search criteria
-        imap.search([
-          'OR', 
-          ['TO', emailAddress], 
-          'OR',
-          ['CC', emailAddress],
-          ['BCC', emailAddress]
-        ], (err, results) => {
-          if (err) {
-            console.error('❌ Search error:', err);
-            // Try simpler search if complex search fails
-            imap.search([['TO', emailAddress]], (err2, results2) => {
-              if (err2) {
-                console.error('❌ Simple search also failed:', err2);
-                reject(err2);
-                return;
-              }
-              processSearchResults(results2 || []);
-            });
-            return;
-          }
-          
-          processSearchResults(results || []);
+        // Get the last 50 emails to search through
+        const totalMessages = box.messages.total;
+        const startSeq = Math.max(1, totalMessages - 49); // Last 50 messages
+        const endSeq = totalMessages;
+        
+        console.log(`📥 Fetching messages ${startSeq} to ${endSeq}`);
+        
+        const f = imap.fetch(`${startSeq}:${endSeq}`, { 
+          bodies: '',
+          struct: true 
         });
 
-        function processSearchResults(results) {
-          console.log(`📊 Search results: ${results.length} emails found for ${emailAddress}`);
-          console.log(`📋 Message IDs:`, results);
+        let processedCount = 0;
+        const totalToProcess = endSeq - startSeq + 1;
 
-          if (!results || !results.length) {
-            console.log(`ℹ️  No emails found for ${emailAddress}`);
-            resolve([]);
-            return;
-          }
-
-          // Process recent emails (limit to last 20 for performance)
-          const recentResults = results.slice(-20);
-          console.log(`📥 Processing ${recentResults.length} recent emails`);
+        f.on('message', (msg, seqno) => {
+          console.log(`📨 Processing message ${seqno}`);
+          let buffer = '';
           
-          let processedCount = 0;
-
-          const f = imap.fetch(recentResults, { 
-            bodies: '',
-            struct: true 
+          msg.on('body', (stream, info) => {
+            stream.on('data', (chunk) => {
+              buffer += chunk.toString('utf8');
+            });
           });
 
-          f.on('message', (msg, seqno) => {
-            console.log(`📨 Processing message ${seqno}`);
-            let buffer = '';
-            let messageHeaders = {};
-            
-            msg.on('body', (stream, info) => {
-              stream.on('data', (chunk) => {
-                buffer += chunk.toString('utf8');
-              });
-            });
+          msg.once('end', () => {
+            simpleParser(buffer, (err, parsed) => {
+              if (!err && parsed) {
+                // Check if this email is for our generated address
+                const toAddresses = parsed.to ? parsed.to.value || [] : [];
+                const ccAddresses = parsed.cc ? parsed.cc.value || [] : [];
+                const bccAddresses = parsed.bcc ? parsed.bcc.value || [] : [];
+                
+                // Also check raw headers for more comprehensive matching
+                const rawTo = parsed.headers.get('to') || '';
+                const rawCc = parsed.headers.get('cc') || '';
+                const rawBcc = parsed.headers.get('bcc') || '';
+                
+                const allRecipients = [
+                  ...toAddresses.map(addr => addr.address?.toLowerCase()),
+                  ...ccAddresses.map(addr => addr.address?.toLowerCase()),
+                  ...bccAddresses.map(addr => addr.address?.toLowerCase())
+                ].filter(Boolean);
 
-            msg.on('attributes', (attrs) => {
-              messageHeaders = attrs;
-            });
-
-            msg.once('end', () => {
-              simpleParser(buffer, (err, parsed) => {
-                if (!err && parsed) {
-                  // Double-check that this email is actually for our generated address
-                  const toAddresses = parsed.to ? parsed.to.value : [];
-                  const ccAddresses = parsed.cc ? parsed.cc.value : [];
-                  const bccAddresses = parsed.bcc ? parsed.bcc.value : [];
+                // Also check raw headers (case-insensitive)
+                const targetEmail = emailAddress.toLowerCase();
+                const foundInRaw = rawTo.toLowerCase().includes(targetEmail) || 
+                                 rawCc.toLowerCase().includes(targetEmail) || 
+                                 rawBcc.toLowerCase().includes(targetEmail);
+                
+                const isForOurEmail = allRecipients.includes(targetEmail) || foundInRaw;
+                
+                console.log(`📧 Message ${seqno} analysis:`);
+                console.log(`   From: ${parsed.from ? parsed.from.text : 'Unknown'}`);
+                console.log(`   Subject: ${parsed.subject || 'No Subject'}`);
+                console.log(`   To: ${rawTo}`);
+                console.log(`   Recipients found: ${allRecipients.join(', ')}`);
+                console.log(`   Target email: ${targetEmail}`);
+                console.log(`   Match: ${isForOurEmail ? '✅ YES' : '❌ NO'}`);
+                
+                if (isForOurEmail) {
+                  console.log(`✅ Email ${seqno} is for ${emailAddress} - ADDING TO RESULTS`);
                   
-                  const allRecipients = [
-                    ...toAddresses.map(addr => addr.address?.toLowerCase()),
-                    ...ccAddresses.map(addr => addr.address?.toLowerCase()),
-                    ...bccAddresses.map(addr => addr.address?.toLowerCase())
-                  ].filter(Boolean);
-
-                  const isForOurEmail = allRecipients.includes(emailAddress.toLowerCase());
-                  
-                  if (isForOurEmail) {
-                    console.log(`✅ Confirmed email ${seqno} is for ${emailAddress}:`);
-                    console.log(`   From: ${parsed.from ? parsed.from.text : 'Unknown'}`);
-                    console.log(`   Subject: ${parsed.subject || 'No Subject'}`);
-                    console.log(`   Date: ${parsed.date}`);
-                    
-                    messages.push({
-                      id: seqno.toString(),
-                      from: parsed.from ? parsed.from.text : 'Unknown',
-                      subject: parsed.subject || 'No Subject',
-                      preview: parsed.text ? parsed.text.substring(0, 100) + '...' : 'No preview available',
-                      body: parsed.html || parsed.text || 'No body content',
-                      timestamp: parsed.date || new Date(),
-                      read: false
-                    });
-                  } else {
-                    console.log(`❌ Email ${seqno} is not for ${emailAddress}, skipping`);
-                    console.log(`   Recipients:`, allRecipients);
-                  }
-                } else if (err) {
-                  console.error(`❌ Error parsing email ${seqno}:`, err);
+                  messages.push({
+                    id: seqno.toString(),
+                    from: parsed.from ? parsed.from.text : 'Unknown',
+                    subject: parsed.subject || 'No Subject',
+                    preview: parsed.text ? parsed.text.substring(0, 100) + '...' : 'No preview available',
+                    body: parsed.html || parsed.text || 'No body content',
+                    timestamp: parsed.date || new Date(),
+                    read: false
+                  });
+                }
+              } else if (err) {
+                console.error(`❌ Error parsing email ${seqno}:`, err);
+              }
+              
+              processedCount++;
+              console.log(`📊 Processed ${processedCount}/${totalToProcess} emails`);
+              
+              if (processedCount === totalToProcess) {
+                console.log(`🎉 Email processing complete!`);
+                console.log(`📊 Total emails found for ${emailAddress}: ${messages.length}`);
+                
+                if (messages.length > 0) {
+                  console.log(`📋 Found emails:`);
+                  messages.forEach((msg, index) => {
+                    console.log(`   ${index + 1}. From: ${msg.from}, Subject: ${msg.subject}`);
+                  });
+                } else {
+                  console.log(`⚠️  No emails found for ${emailAddress}`);
+                  console.log(`💡 This could mean:`);
+                  console.log(`   - No emails have been sent to this address yet`);
+                  console.log(`   - Emails are in a different folder (check Spam/Junk)`);
+                  console.log(`   - Email server configuration issue`);
                 }
                 
-                processedCount++;
-                console.log(`📊 Processed ${processedCount}/${recentResults.length} emails`);
-                
-                if (processedCount === recentResults.length) {
-                  console.log(`🎉 Email processing complete. Found ${messages.length} emails for ${emailAddress}`);
-                  imap.end();
-                  resolve(messages.reverse()); // Most recent first
-                }
-              });
+                imap.end();
+                resolve(messages.reverse()); // Most recent first
+              }
             });
           });
+        });
 
-          f.once('error', (err) => {
-            console.error('❌ Fetch error:', err);
-            reject(err);
-          });
-        }
+        f.once('error', (err) => {
+          console.error('❌ Fetch error:', err);
+          reject(err);
+        });
+
+        f.once('end', () => {
+          console.log('📥 Fetch completed');
+        });
       });
     });
 
