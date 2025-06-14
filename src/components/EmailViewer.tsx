@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { X, User, Clock, Reply, Forward, Trash2 } from 'lucide-react';
+import { X, User, Clock, Reply, Forward, Trash2, Download } from 'lucide-react';
 
 interface Email {
   id: string;
@@ -12,6 +12,7 @@ interface Email {
   preview: string;
   timestamp: Date;
   read: boolean;
+  body?: string;
 }
 
 interface EmailViewerProps {
@@ -30,29 +31,25 @@ const EmailViewer: React.FC<EmailViewerProps> = ({ email, onClose }) => {
     });
   };
 
-  // Mock full email content
-  const fullContent = `
-    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-      <h2 style="color: #2563eb;">Welcome to our service!</h2>
-      <p>Thank you for signing up for our service. We're excited to have you on board!</p>
-      
-      <p>To get started, please verify your email address by clicking the button below:</p>
-      
-      <div style="text-align: center; margin: 30px 0;">
-        <a href="#" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-          Verify Email Address
-        </a>
-      </div>
-      
-      <p>If you didn't create this account, you can safely ignore this email.</p>
-      
-      <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-      
-      <p style="font-size: 12px; color: #6b7280;">
-        This email was sent to ${email.from}. If you no longer wish to receive these emails, you can unsubscribe at any time.
-      </p>
-    </div>
-  `;
+  const handleDownload = () => {
+    const emailContent = `
+From: ${email.from}
+Subject: ${email.subject}
+Date: ${formatDateTime(email.timestamp)}
+
+${email.body ? email.body.replace(/<[^>]*>/g, '') : email.preview}
+    `.trim();
+
+    const blob = new Blob([emailContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `email-${email.id}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <Card className="bg-white/90 backdrop-blur-sm border-blue-200 shadow-lg">
@@ -85,24 +82,30 @@ const EmailViewer: React.FC<EmailViewerProps> = ({ email, onClose }) => {
       </CardHeader>
       <CardContent className="p-6">
         <div 
-          className="prose prose-sm max-w-none"
-          dangerouslySetInnerHTML={{ __html: fullContent }}
+          className="prose prose-sm max-w-none mb-6"
+          dangerouslySetInnerHTML={{ __html: email.body || `<p>${email.preview}</p>` }}
         />
         
-        <div className="flex items-center space-x-2 mt-6 pt-4 border-t border-gray-200">
-          <Button size="sm" variant="outline" disabled>
-            <Reply className="h-4 w-4 mr-2" />
-            Reply
-          </Button>
-          <Button size="sm" variant="outline" disabled>
-            <Forward className="h-4 w-4 mr-2" />
-            Forward
-          </Button>
-          <Button size="sm" variant="outline" disabled>
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete
-          </Button>
-          <Badge variant="secondary" className="ml-auto">
+        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+          <div className="flex items-center space-x-2">
+            <Button size="sm" variant="outline" disabled>
+              <Reply className="h-4 w-4 mr-2" />
+              Reply
+            </Button>
+            <Button size="sm" variant="outline" disabled>
+              <Forward className="h-4 w-4 mr-2" />
+              Forward
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleDownload}>
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
+            <Button size="sm" variant="outline" disabled>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+          </div>
+          <Badge variant="secondary">
             Temporary Email - No replies possible
           </Badge>
         </div>
