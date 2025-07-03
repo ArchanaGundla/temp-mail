@@ -61,6 +61,7 @@ export const emailService = {
   async checkHealth(): Promise<boolean> {
     try {
       const response = await fetch(`${API_BASE_URL}/health`);
+      console.log('response :' , response);
       return response.ok;
     } catch {
       return false;
