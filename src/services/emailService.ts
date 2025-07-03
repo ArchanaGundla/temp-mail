@@ -60,13 +60,12 @@ export const emailService = {
     }));
   },
 
-  async checkHealth(): Promise<boolean> {
-    try {
-      const response = await fetch(`https://temp-mail-server.vercel.app/api/health`);
-      console.log('response :' , response);
-      return response.ok;
-    } catch {
-      return false;
-    }
+ async checkHealth(): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/health`);
+    return response.ok;
+  } catch {
+    return false;
   }
+}
 };
