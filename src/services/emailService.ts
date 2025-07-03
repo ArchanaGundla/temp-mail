@@ -2,7 +2,7 @@
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   'https://temp-mail-server.vercel.app/api';
-
+console.log(import.meta.env.VITE_API_BASE_URL)
 export interface EmailMessage {
   id: string;
   from: string;
