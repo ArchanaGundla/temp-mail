@@ -1,5 +1,7 @@
 
-const API_BASE_URL = 'https://temp-mail-server.vercel.app/api/';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  'https://temp-mail-server.vercel.app/api';
 
 export interface EmailMessage {
   id: string;
