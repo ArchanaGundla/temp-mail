@@ -1,5 +1,3 @@
-import cors from '../../lib/cors-middleware';
-
 const API_BASE_URL = 'https://temp-mail-server.vercel.app/api';
 console.log('▶️ Hard‑coded API_BASE_URL:', API_BASE_URL);
 console.log('🧪 Env var VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
