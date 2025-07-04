@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Copy, Mail, Clock, Trash2, RefreshCw, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { emailService } from '@/services/emailService';
-import cors from '../../lib/cors-middleware';
 
 interface EmailGeneratorProps {
   currentEmail: string | null;
